@@ -1,0 +1,11 @@
+<component name="ArtifactManager">
+  <artifact type="jar" name="Java-Spread-Replicated-Bank:jar">
+    <output-path>$PROJECT_DIR$/out/artifacts/Java_Spread_Replicated_Bank_jar</output-path>
+    <root id="archive" name="Java-Spread-Replicated-Bank.jar">
+      <element id="module-output" name="Java-Spread-Replicated-Bank" />
+      <element id="extracted-dir" path="$PROJECT_DIR$/src/spread-4.0.0.jar" path-in-jar="/" />
+      <element id="extracted-dir" path="$PROJECT_DIR$/src/jsch-0.1.54.jar" path-in-jar="/" />
+      <element id="extracted-dir" path="$PROJECT_DIR$/src/ini4j-0.5.4.jar" path-in-jar="/" />
+    </root>
+  </artifact>
+</component>

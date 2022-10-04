@@ -9,5 +9,6 @@
     <orderEntry type="sourceFolder" forTests="false" />
     <orderEntry type="library" name="spread-4.0.0" level="project" />
     <orderEntry type="library" name="jsch-0.1.54" level="project" />
+    <orderEntry type="library" name="ini4j-0.5.4" level="project" />
   </component>
 </module>
