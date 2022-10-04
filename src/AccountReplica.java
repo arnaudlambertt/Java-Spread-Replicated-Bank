@@ -1,16 +1,14 @@
 import com.jcraft.jsch.*;
 import org.ini4j.Ini;
-import org.ini4j.InvalidFileFormatException;
 import spread.*;
-
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.net.InetAddress;
-import java.net.UnknownHostException;
-
+import java.util.UUID;
 
 public class AccountReplica {
+
+    private static UUID id;
 
     public static void setupTunnel (String host) throws IOException, JSchException {
 
@@ -58,13 +56,16 @@ public class AccountReplica {
     }
 
     public static void main(String[] args) throws InterruptedException {
+
+        id = UUID.randomUUID();
         SpreadConnection connection = new SpreadConnection();
         Listener listener = new Listener();
 
         try {
-            connection.add(listener);
             setupTunnel(args.length > 0 ? args[0] : "129.240.65.61");
-            connection.connect(InetAddress.getByName("127.0.0.1"), 4803, "Arnaud", false, true);
+
+            connection.add(listener);
+            connection.connect(InetAddress.getByName("127.0.0.1"), 4803, String.valueOf(id), false, true);
 
             SpreadGroup group = new SpreadGroup();
             group.join(connection, "G5");
@@ -75,17 +76,15 @@ public class AccountReplica {
 
             messages[0].addGroup(group);
             messages[0].setFifo();
-            messages[0].setObject("Arnaud 1");
+            messages[0].setObject(id + "Arnaud 1");
 
             messages[1].addGroup(group);
             messages[1].setFifo();
-            messages[1].setObject("Arnaud 2");
+            messages[1].setObject(id + "Arnaud 2");
 
             connection.multicast(messages);
 
-        } catch (SpreadException e) {
-            throw new RuntimeException(e);
-        } catch (IOException | JSchException e) {
+        } catch (SpreadException | IOException | JSchException e) {
             throw new RuntimeException(e);
         }
 
