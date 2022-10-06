@@ -56,7 +56,6 @@ public class Listener implements AdvancedMessageListener {
 
     @Override
     public void membershipMessageReceived(SpreadMessage spreadMessage) {
-        System.out.println(Arrays.toString(spreadMessage.getMembershipInfo().getMembers()));
         AccountReplica.membersInfo = spreadMessage.getMembershipInfo().getMembers();
         synchronized (AccountReplica.group){
             if(AccountReplica.membersInfo.length == AccountReplica.numberOfReplicas)
