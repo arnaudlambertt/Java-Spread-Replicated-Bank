@@ -42,11 +42,11 @@ public class Transaction{
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         Transaction that = (Transaction) o;
-        return Objects.equals(command, that.command) && Objects.equals(uniqueId, that.uniqueId);
+        return Objects.equals(uniqueId, that.uniqueId);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(command, uniqueId);
+        return Objects.hash(uniqueId);
     }
 }

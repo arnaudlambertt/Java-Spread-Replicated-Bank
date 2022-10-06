@@ -2,12 +2,10 @@ import com.jcraft.jsch.*;
 import org.ini4j.Ini;
 import spread.*;
 import java.io.File;
+import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.io.Serializable;
 import java.net.InetAddress;
-import java.rmi.MarshalledObject;
 import java.util.*;
-import java.util.concurrent.ConcurrentLinkedDeque;
 
 public class AccountReplica {
 
@@ -15,16 +13,21 @@ public class AccountReplica {
     static String accountName;
     static SpreadGroup group;
     static SpreadConnection connection;
-
     static double balance;
     static List<Transaction> executedList;
     static final List<Transaction> outstandingCollection = Collections.synchronizedList(new ArrayList<>());
     static int outstandingCounter;
+    static Thread daemonThread;
     static int orderCounter;
+    static SpreadGroup[] membersInfo;
+    static File file;
+    static Listener listener;
+
+    static Session session;
 
     public static void outstandingCollectionDaemon(){
 
-        while(true) {
+        while(!Thread.currentThread().isInterrupted()) {
             List<SpreadMessage> messages = new ArrayList<>();
 
             for (Transaction t : outstandingCollection){
@@ -45,7 +48,9 @@ public class AccountReplica {
             }
 
             try {
-                Thread.sleep(10000);
+                synchronized (Thread.currentThread()){
+                    Thread.currentThread().wait(10000);
+                }
             } catch (InterruptedException e) {
                 throw new RuntimeException(e);
             }
@@ -75,7 +80,7 @@ public class AccountReplica {
         int tunnelRemotePort = 4803;
 
         JSch jsch = new JSch();
-        Session session = null;
+        session = null;
         session = jsch.getSession(username, host, port);
         session.setPassword(password);
         LocalUserInfo lui = new LocalUserInfo();
@@ -97,11 +102,11 @@ public class AccountReplica {
         }
     }
 
-    public static String getQuickBalance(){
-        return String.valueOf(balance);
+    public static void getQuickBalance(){
+        System.out.println(String.valueOf(balance));
     }
 
-    public static String getSyncedBalance(){
+    public static void getSyncedBalance(){
         synchronized (outstandingCollection){
             try {
                 if(!outstandingCollection.isEmpty())
@@ -111,7 +116,7 @@ public class AccountReplica {
                 throw new RuntimeException(e);
             }
         }
-        return String.valueOf(balance);
+        System.out.println(String.valueOf(balance));
     }
 
     public static void getHistory(){
@@ -122,16 +127,142 @@ public class AccountReplica {
 
     public static void cleanHistory(){
         executedList.clear();
+        System.out.println("Cleaned history.");
     }
 
+    public static void memberInfo(){
+        System.out.println(membersInfo.toString());
+    }
+
+    public static void sleep(int duration){
+        try {
+            System.out.println("Sleeping for " + duration);
+            Thread.sleep(duration * 1000);
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        }
+    }
+    public static void checkTxStatus(String uniqueId){
+        try{
+            Transaction t = new Transaction("deposit 10", uniqueId);
+            if(executedList.contains(t))
+                System.out.println(executedList.get(executedList.indexOf(t)) + ": executed.");
+            else if(outstandingCollection.contains(t))
+                System.out.println(outstandingCollection.get(outstandingCollection.indexOf(t)) + ": outstanding transaction.");
+            else
+                System.out.println("Transaction " + uniqueId + " not  executed.");
+        } catch (NoSuchMethodException e) {
+            throw new RuntimeException(e);
+        }
+    }
+    public static void exit(){
+        synchronized (daemonThread){
+            daemonThread.notify();
+            daemonThread.interrupt();
+        }
+        try {
+            connection.remove(listener);
+            connection.disconnect();
+            if(session != null)
+                session.disconnect();
+        } catch (SpreadException e) {
+            throw new RuntimeException(e);
+        }
+    }
+    public static void CLI(){
+        String command;
+        String method;
+        String args = "";
+
+        Scanner input;
+        if(file != null && file.exists()) {
+            try {
+                input = new Scanner(file, "UTF-8");
+            } catch (FileNotFoundException e) {
+                throw new RuntimeException(e);
+            }
+        }
+        else{
+            System.out.println(
+                "Commands: \n" +
+                "addInterest <amount>\n" +
+                "withdraw <amount>\n" +
+                "deposit <amount>\n" +
+                "getQuickBalance\n" +
+                "getSyncedBalance\n" +
+                "getHistory\n" +
+                "checkTxStatus\n" +
+                "cleanHistory\n" +
+                "memberInfo\n" +
+                "sleep <duration>\n"
+            );
+            input = new Scanner(System.in);
+        }
+        do{
+            command = input.nextLine();
+            method = command.split(" ")[0];
+            if(command.split(" ").length > 1)
+                args = command.split(" ")[1];
+
+            switch (method){
+                case "addInterest":
+                case "withdraw":
+                case "deposit":{
+                    try {
+                        outstandingCollection.add(new Transaction(command,id + String.valueOf(outstandingCounter++)));
+                    } catch (NoSuchMethodException | IllegalArgumentException e) {
+                        throw new RuntimeException(e);
+                    }
+                    break;
+                }
+                case "getQuickBalance":{
+                    getQuickBalance();
+                    break;
+                }
+                case "getSyncedBalance":{
+                    getSyncedBalance();
+                    break;
+                }
+                case "getHistory":{
+                    getHistory();
+                    break;
+                }
+                case "cleanHistory":{
+                    cleanHistory();
+                    break;
+                }
+                case "memberInfo":{
+                    memberInfo();
+                    break;
+                }
+                case "sleep": {
+                    if (args.isEmpty())
+                        throw new IllegalArgumentException(method + ": bad argument");
+                    try {
+                        sleep(Integer.parseInt(args));
+                    } catch (NumberFormatException e) {
+                        throw new IllegalArgumentException(method + ": bad argument");
+                    }
+                    break;
+                }
+                case "exit":{
+                    exit();
+                    break;
+                }
+                default:{
+                    throw new IllegalArgumentException("No such method");
+                }
+            }
+        }while(!method.equals("exit"));
+    }
     public static void main(String[] args) throws InterruptedException, NoSuchMethodException {
 
         id = UUID.randomUUID();
         balance = 0.0;
         executedList = new ArrayList<>();
-
         connection = new SpreadConnection();
-        Listener listener = new Listener();
+        daemonThread = new Thread(AccountReplica::outstandingCollectionDaemon);
+        listener = new Listener();
 
         try {
             if(args.length == 0 || args[0].equals("129.240.65.61"))
@@ -144,23 +275,13 @@ public class AccountReplica {
             group = new SpreadGroup();
             group.join(connection, "G5");
 
-            new Thread(AccountReplica::outstandingCollectionDaemon).start();
+            daemonThread.start();
 
-            Transaction t1 = new Transaction("deposit 10", id + "_" + outstandingCounter++);
-            Transaction t2 = new Transaction("deposit 20", id + "_" + outstandingCounter++);
-
-            outstandingCollection.add(t1);
-            outstandingCollection.add(t2);
-
+            CLI();
 
         } catch (SpreadException | IOException | JSchException e) {
             throw new RuntimeException(e);
-        } catch (NoSuchMethodException e) {
-            throw new NoSuchMethodException(e.getMessage());
         }
-
-        System.out.println("Hello world!");
-        Thread.sleep(100000000);
     }
 
     public static void deposit(double amount){
