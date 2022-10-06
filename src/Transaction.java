@@ -1,3 +1,5 @@
+import java.util.Objects;
+
 public class Transaction{
 
     final String command;
@@ -8,7 +10,7 @@ public class Transaction{
         String method = command.split(" ")[0];
         String args = command.split(" ")[1];
 
-        switch(method){
+        switch (method) {
             case "deposit":
             case "withdraw":
             case "addInterest":
@@ -17,16 +19,16 @@ public class Transaction{
                 throw new NoSuchMethodException("No such method: " + method);
         }
 
-        try{
+        try {
             Double.parseDouble(args);
-        }
-        catch (NumberFormatException e){
+        } catch (NumberFormatException e) {
             throw new IllegalArgumentException("Bad arguments: " + args);
         }
 
         this.uniqueId = uniqueId;
+    }
 
-    public Transaction(String input){
+    public Transaction(String input) throws NoSuchMethodException, IllegalArgumentException {
         this(input.split(" ")[0] + " " + input.split(" ")[1], input.split(" ")[2]);
     }
 

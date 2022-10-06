@@ -10,7 +10,11 @@ public class Listener implements AdvancedMessageListener {
         String msg = null;
         try {
             msg = (String) message.getObject();
-            transaction = new Transaction(msg);
+            try {
+                transaction = new Transaction(msg);
+            } catch (NoSuchMethodException | IllegalArgumentException e) {
+                System.err.println(e.getMessage());
+            }
             System.out.println(transaction);
 
             String method = transaction.command.split(" ")[0];
