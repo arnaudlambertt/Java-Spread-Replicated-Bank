@@ -131,7 +131,7 @@ public class AccountReplica {
     }
 
     public static void memberInfo(){
-        System.out.println(membersInfo.toString());
+        System.out.println(Arrays.toString(membersInfo));
     }
 
     public static void sleep(int duration){
@@ -150,7 +150,7 @@ public class AccountReplica {
             else if(outstandingCollection.contains(t))
                 System.out.println(outstandingCollection.get(outstandingCollection.indexOf(t)) + ": outstanding transaction.");
             else
-                System.out.println("Transaction " + uniqueId + " not  executed.");
+                System.out.println("Transaction " + uniqueId + " not found.");
         } catch (NoSuchMethodException e) {
             throw new RuntimeException(e);
         }
@@ -167,6 +167,15 @@ public class AccountReplica {
                 session.disconnect();
         } catch (SpreadException e) {
             throw new RuntimeException(e);
+        }
+    }
+    private static void createTransaction(String command) {
+        try {
+            Transaction t = new Transaction(command,id + "_" + String.valueOf(outstandingCounter++));
+            outstandingCollection.add(t);
+            System.out.println("Created transaction: " + t);
+        } catch (NoSuchMethodException | IllegalArgumentException e) {
+            System.out.println(e.getMessage());
         }
     }
     public static void CLI(){
@@ -208,11 +217,7 @@ public class AccountReplica {
                 case "addInterest":
                 case "withdraw":
                 case "deposit":{
-                    try {
-                        outstandingCollection.add(new Transaction(command,id + String.valueOf(outstandingCounter++)));
-                    } catch (NoSuchMethodException | IllegalArgumentException e) {
-                        throw new RuntimeException(e);
-                    }
+                    createTransaction(command);
                     break;
                 }
                 case "getQuickBalance":{
@@ -235,13 +240,19 @@ public class AccountReplica {
                     memberInfo();
                     break;
                 }
+                case "checkTxStatus":{
+                    if(args.contains("<"))
+                        args = id + "_" + (outstandingCounter-1);
+                    checkTxStatus(args);
+                    break;
+                }
                 case "sleep": {
                     if (args.isEmpty())
-                        throw new IllegalArgumentException(method + ": bad argument");
+                        System.out.println(method + " Error: bad argument");
                     try {
                         sleep(Integer.parseInt(args));
                     } catch (NumberFormatException e) {
-                        throw new IllegalArgumentException(method + ": bad argument");
+                        System.out.println(method + " Error: bad argument");
                     }
                     break;
                 }
@@ -250,11 +261,12 @@ public class AccountReplica {
                     break;
                 }
                 default:{
-                    throw new IllegalArgumentException("No such method");
+                    System.out.println("Error: No such method");
                 }
             }
         }while(!method.equals("exit"));
     }
+
     public static void main(String[] args) throws InterruptedException, NoSuchMethodException {
 
         if(args.length < 3)
@@ -272,6 +284,7 @@ public class AccountReplica {
         connection = new SpreadConnection();
         daemonThread = new Thread(AccountReplica::outstandingCollectionDaemon);
         listener = new Listener();
+        membersInfo = new SpreadGroup[0];
 
         try {
             if(serverAddress.equals("129.240.65.61"))
@@ -285,8 +298,12 @@ public class AccountReplica {
 
             daemonThread.start();
 
+            Thread.sleep(500);
             synchronized (group){
-                group.wait();
+                if(membersInfo.length < numberOfReplicas) {
+                    System.out.println("Waiting for replicas...");
+                    group.wait();
+                }
             }
 
             CLI();

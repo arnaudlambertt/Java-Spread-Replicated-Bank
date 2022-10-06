@@ -21,7 +21,6 @@ public class Listener implements AdvancedMessageListener {
 
             if(!AccountReplica.executedList.contains(transaction)){
 
-                System.out.println(transaction);
                 AccountReplica.executedList.add(transaction);
                 AccountReplica.orderCounter++;
 
@@ -40,6 +39,7 @@ public class Listener implements AdvancedMessageListener {
                     }
                     default:;
                 }
+                System.out.println("Executed transaction " + transaction);
 
             }else
                 System.out.println(transaction + " already executed");
