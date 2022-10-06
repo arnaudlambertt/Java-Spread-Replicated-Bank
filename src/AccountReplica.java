@@ -15,7 +15,7 @@ public class AccountReplica {
     static UUID id;
     static double balance;
     static List<Transaction> executedList;
-    static Deque<Transaction> outstandingCollection;
+    static List<Transaction> outstandingCollection;
     static int outstandingCounter;
     static int orderCounter;
 
@@ -68,8 +68,9 @@ public class AccountReplica {
     public static void main(String[] args) throws InterruptedException {
 
         id = UUID.randomUUID();
+        balance = 0.0;
         executedList = new ArrayList<>();
-        outstandingCollection = new ConcurrentLinkedDeque<>();
+        outstandingCollection = new ArrayList<>();
 
         SpreadConnection connection = new SpreadConnection();
         Listener listener = new Listener();
@@ -85,16 +86,19 @@ public class AccountReplica {
             group.join(connection, "G5");
             SpreadMessage[] messages = new SpreadMessage[2];
 
+            Transaction t1 = new Transaction("deposit 10", id + "_" + orderCounter++);
+            Transaction t2 = new Transaction("deposit 10", id + "_" + orderCounter++);
+
             messages[0] = new SpreadMessage();
             messages[1] = new SpreadMessage();
 
             messages[0].addGroup(group);
             messages[0].setFifo();
-            messages[0].setObject(id + "Arnaud 1");
+            messages[0].setObject(t1.toString());
 
             messages[1].addGroup(group);
             messages[1].setFifo();
-            messages[1].setObject(id + "Arnaud 2");
+            messages[1].setObject(t2.toString());
 
             connection.multicast(messages);
 
@@ -104,6 +108,18 @@ public class AccountReplica {
 
         System.out.println("Hello world!");
         Thread.sleep(100000000);
+    }
+
+    public static void deposit(double amount){
+        balance += amount;
+    }
+
+    public static void withdraw(double amount){
+        balance -= amount;
+    }
+
+    public static void addInterest(double amount){
+        balance += balance * amount * 0.01;
     }
 
 }
