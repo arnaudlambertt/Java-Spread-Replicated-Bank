@@ -3,22 +3,54 @@ import org.ini4j.Ini;
 import spread.*;
 import java.io.File;
 import java.io.IOException;
+import java.io.Serializable;
 import java.net.InetAddress;
-import java.util.ArrayList;
-import java.util.Deque;
-import java.util.List;
-import java.util.UUID;
+import java.rmi.MarshalledObject;
+import java.util.*;
 import java.util.concurrent.ConcurrentLinkedDeque;
 
 public class AccountReplica {
 
     static UUID id;
+    static String accountName;
+    static SpreadGroup group;
+    static SpreadConnection connection;
+
     static double balance;
     static List<Transaction> executedList;
-    static Deque<Transaction> outstandingCollection;
+    static final List<Transaction> outstandingCollection = Collections.synchronizedList(new ArrayList<>());
     static int outstandingCounter;
     static int orderCounter;
 
+    public static void outstandingCollectionDaemon(){
+
+        while(true) {
+            List<SpreadMessage> messages = new ArrayList<>();
+
+            for (Transaction t : outstandingCollection){
+                SpreadMessage message = new SpreadMessage();
+                message.addGroup(group);
+                message.setFifo();
+                try {
+                    message.setObject(t.toString());
+                } catch (SpreadException e) {
+                    throw new RuntimeException(e);
+                }
+                messages.add(message);
+            }
+            try {
+                connection.multicast(messages.toArray(new SpreadMessage[messages.size()]));
+            } catch (SpreadException e) {
+                throw new RuntimeException(e);
+            }
+
+            try {
+                Thread.sleep(10000);
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            }
+        }
+    }
 
     public static void setupTunnel (String host) throws IOException, JSchException {
 
@@ -65,41 +97,65 @@ public class AccountReplica {
         }
     }
 
-    public static void main(String[] args) throws InterruptedException {
+    public static String getQuickBalance(){
+        return String.valueOf(balance);
+    }
+
+    public static String getSyncedBalance(){
+        synchronized (outstandingCollection){
+            try {
+                if(!outstandingCollection.isEmpty())
+                    outstandingCollection.wait();
+
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            }
+        }
+        return String.valueOf(balance);
+    }
+
+    public static void getHistory(){
+        for(Transaction t : executedList){
+            System.out.println(t);
+        }
+    }
+
+    public static void cleanHistory(){
+        executedList.clear();
+    }
+
+    public static void main(String[] args) throws InterruptedException, NoSuchMethodException {
 
         id = UUID.randomUUID();
         executedList = new ArrayList<>();
-        outstandingCollection = new ConcurrentLinkedDeque<>();
 
-        SpreadConnection connection = new SpreadConnection();
+        connection = new SpreadConnection();
         Listener listener = new Listener();
 
         try {
             if(args.length == 0 || args[0].equals("129.240.65.61"))
                 setupTunnel("129.240.65.61");
 
+
             connection.add(listener);
             connection.connect(InetAddress.getByName(args.length == 0 || args[0].equals("129.240.65.61") ? "127.0.0.1" : args[0]), 4803, String.valueOf(id), false, true);
 
-            SpreadGroup group = new SpreadGroup();
+            group = new SpreadGroup();
             group.join(connection, "G5");
-            SpreadMessage[] messages = new SpreadMessage[2];
 
-            messages[0] = new SpreadMessage();
-            messages[1] = new SpreadMessage();
+            new Thread(AccountReplica::outstandingCollectionDaemon).start();
 
-            messages[0].addGroup(group);
-            messages[0].setFifo();
-            messages[0].setObject(id + "Arnaud 1");
+            Transaction t1 = new Transaction("deposit 10", id + "_" + outstandingCounter++);
+            Transaction t2 = new Transaction("deposit 20", id + "_" + outstandingCounter++);
 
-            messages[1].addGroup(group);
-            messages[1].setFifo();
-            messages[1].setObject(id + "Arnaud 2");
+            outstandingCollection.add(t1);
+            outstandingCollection.add(t2);
 
-            connection.multicast(messages);
 
         } catch (SpreadException | IOException | JSchException e) {
             throw new RuntimeException(e);
+        } catch (NoSuchMethodException e) {
+            throw new NoSuchMethodException(e.getMessage());
         }
 
         System.out.println("Hello world!");
