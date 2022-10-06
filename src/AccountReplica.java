@@ -13,14 +13,17 @@ public class AccountReplica {
 
     static UUID id;
     static String accountName;
+    static String serverAddress;
+    static int numberOfReplicas;
     static SpreadGroup group;
     static SpreadConnection connection;
-
     static double balance;
     static List<Transaction> executedList;
     static final List<Transaction> outstandingCollection = Collections.synchronizedList(new ArrayList<>());
     static int outstandingCounter;
     static int orderCounter;
+    static SpreadGroup[] membersInfo;
+    static File file;
 
     public static void outstandingCollectionDaemon(){
 
@@ -106,7 +109,6 @@ public class AccountReplica {
             try {
                 if(!outstandingCollection.isEmpty())
                     outstandingCollection.wait();
-
             } catch (InterruptedException e) {
                 throw new RuntimeException(e);
             }
@@ -126,6 +128,15 @@ public class AccountReplica {
 
     public static void main(String[] args) throws InterruptedException, NoSuchMethodException {
 
+        if(args.length < 3)
+            throw new IllegalArgumentException();
+
+        serverAddress = args[0];
+        accountName = args[1];
+        numberOfReplicas = Integer.parseInt(args[2]);
+        if(args.length > 3)
+            file = new File(args[3]);
+
         id = UUID.randomUUID();
         balance = 0.0;
         executedList = new ArrayList<>();
@@ -134,17 +145,20 @@ public class AccountReplica {
         Listener listener = new Listener();
 
         try {
-            if(args.length == 0 || args[0].equals("129.240.65.61"))
-                setupTunnel("129.240.65.61");
-
+            if(serverAddress.equals("129.240.65.61"))
+                setupTunnel(serverAddress);
 
             connection.add(listener);
-            connection.connect(InetAddress.getByName(args.length == 0 || args[0].equals("129.240.65.61") ? "127.0.0.1" : args[0]), 4803, String.valueOf(id), false, true);
+            connection.connect(InetAddress.getByName(serverAddress.equals("129.240.65.61") ? "127.0.0.1" : serverAddress), 4803, String.valueOf(id), false, true);
 
             group = new SpreadGroup();
-            group.join(connection, "G5");
+            group.join(connection, accountName);
 
             new Thread(AccountReplica::outstandingCollectionDaemon).start();
+
+            synchronized (group){
+                group.wait();
+            }
 
             Transaction t1 = new Transaction("deposit 10", id + "_" + outstandingCounter++);
             Transaction t2 = new Transaction("deposit 20", id + "_" + outstandingCounter++);
@@ -152,15 +166,11 @@ public class AccountReplica {
             outstandingCollection.add(t1);
             outstandingCollection.add(t2);
 
-
         } catch (SpreadException | IOException | JSchException e) {
             throw new RuntimeException(e);
         } catch (NoSuchMethodException e) {
             throw new NoSuchMethodException(e.getMessage());
         }
-
-        System.out.println("Hello world!");
-        Thread.sleep(100000000);
     }
 
     public static void deposit(double amount){

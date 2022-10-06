@@ -15,13 +15,13 @@ public class Listener implements AdvancedMessageListener {
             } catch (NoSuchMethodException | IllegalArgumentException e) {
                 System.err.println(e.getMessage());
             }
-            System.out.println(transaction);
 
             String method = transaction.command.split(" ")[0];
             double argument = Double.parseDouble(transaction.command.split(" ")[1]);
 
             if(!AccountReplica.executedList.contains(transaction)){
 
+                System.out.println(transaction);
                 AccountReplica.executedList.add(transaction);
                 AccountReplica.orderCounter++;
 
@@ -41,9 +41,8 @@ public class Listener implements AdvancedMessageListener {
                     default:;
                 }
 
-            }else{
+            }else
                 System.out.println(transaction + " already executed");
-            }
 
             synchronized (AccountReplica.outstandingCollection) {
                 if (AccountReplica.outstandingCollection.remove(transaction) && AccountReplica.outstandingCollection.isEmpty())
@@ -58,6 +57,10 @@ public class Listener implements AdvancedMessageListener {
     @Override
     public void membershipMessageReceived(SpreadMessage spreadMessage) {
         System.out.println(Arrays.toString(spreadMessage.getMembershipInfo().getMembers()));
+        AccountReplica.membersInfo = spreadMessage.getMembershipInfo().getMembers();
+        synchronized (AccountReplica.group){
+            if(AccountReplica.membersInfo.length == AccountReplica.numberOfReplicas)
+                AccountReplica.group.notify();
+        }
     }
-
 }
