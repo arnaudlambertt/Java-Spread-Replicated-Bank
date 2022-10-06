@@ -4,13 +4,23 @@ import spread.SpreadMessage;
 
 public class Listener implements AdvancedMessageListener {
     public void regularMessageReceived(SpreadMessage message) {
+        Transaction transaction = null;
         String msg = null;
         try {
-            msg = (String) message.getObject();
+            //transaction = (Transaction) message.getObject();
+            msg = (String)message.getObject();
+            System.out.println(msg);
+            //scanner first element of command
+            //switch first element as method
+            //CHECK IF NOT ALREADY EXECUTED, iF YES => ALERT
+            //execute it
+            //PUT IT IN THE EXECUTED COLLECTION
+            //REMOVE FROM OUTSTANDING
+            //IF EMPTY, NOTIFY OUTSTANDING COLLECTION (FOR CLIENT WAIT)
+
         } catch (SpreadException e) {
             throw new RuntimeException(e);
         }
-        System.out.println(msg);
     }
 
     @Override

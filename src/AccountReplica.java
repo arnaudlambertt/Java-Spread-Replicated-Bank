@@ -4,11 +4,21 @@ import spread.*;
 import java.io.File;
 import java.io.IOException;
 import java.net.InetAddress;
+import java.util.ArrayList;
+import java.util.Deque;
+import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentLinkedDeque;
 
 public class AccountReplica {
 
-    private static UUID id;
+    static UUID id;
+    static double balance;
+    static List<Transaction> executedList;
+    static Deque<Transaction> outstandingCollection;
+    static int outstandingCounter;
+    static int orderCounter;
+
 
     public static void setupTunnel (String host) throws IOException, JSchException {
 
@@ -58,14 +68,18 @@ public class AccountReplica {
     public static void main(String[] args) throws InterruptedException {
 
         id = UUID.randomUUID();
+        executedList = new ArrayList<>();
+        outstandingCollection = new ConcurrentLinkedDeque<>();
+
         SpreadConnection connection = new SpreadConnection();
         Listener listener = new Listener();
 
         try {
-            setupTunnel(args.length > 0 ? args[0] : "129.240.65.61");
+            if(args.length == 0 || args[0].equals("129.240.65.61"))
+                setupTunnel("129.240.65.61");
 
             connection.add(listener);
-            connection.connect(InetAddress.getByName("127.0.0.1"), 4803, String.valueOf(id), false, true);
+            connection.connect(InetAddress.getByName(args.length == 0 || args[0].equals("129.240.65.61") ? "127.0.0.1" : args[0]), 4803, String.valueOf(id), false, true);
 
             SpreadGroup group = new SpreadGroup();
             group.join(connection, "G5");
