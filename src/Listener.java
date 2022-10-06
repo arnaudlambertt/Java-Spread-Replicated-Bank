@@ -2,21 +2,49 @@ import spread.AdvancedMessageListener;
 import spread.SpreadException;
 import spread.SpreadMessage;
 
+import java.util.Arrays;
+
 public class Listener implements AdvancedMessageListener {
     public void regularMessageReceived(SpreadMessage message) {
         Transaction transaction = null;
         String msg = null;
         try {
-            //transaction = (Transaction) message.getObject();
-            msg = (String)message.getObject();
-            System.out.println(msg);
-            //scanner first element of command
-            //switch first element as method
-            //CHECK IF NOT ALREADY EXECUTED, iF YES => ALERT
-            //execute it
-            //PUT IT IN THE EXECUTED COLLECTION
-            //REMOVE FROM OUTSTANDING
-            //IF EMPTY, NOTIFY OUTSTANDING COLLECTION (FOR CLIENT WAIT)
+            msg = (String) message.getObject();
+            transaction = new Transaction(msg);
+            System.out.println(transaction);
+
+            String method = transaction.command.split(" ")[0];
+            double argument = Double.parseDouble(transaction.command.split(" ")[1]);
+
+            if(!AccountReplica.executedList.contains(transaction)){
+
+                AccountReplica.executedList.add(transaction);
+                AccountReplica.orderCounter++;
+
+                switch (method){
+                    case "deposit":{
+                        AccountReplica.deposit(argument);
+                        break;
+                    }
+                    case "addInterest":{
+                        AccountReplica.addInterest(argument);
+                        break;
+                    }
+                    case "withdraw":{
+                        AccountReplica.withdraw(argument);
+                        break;
+                    }
+                    default:;
+                }
+
+            }else{
+                System.out.println(transaction + " already executed");
+            }
+
+            synchronized (AccountReplica.outstandingCollection) {
+                if (AccountReplica.outstandingCollection.remove(transaction) && AccountReplica.outstandingCollection.isEmpty())
+                    AccountReplica.outstandingCollection.notify();
+            }
 
         } catch (SpreadException e) {
             throw new RuntimeException(e);
@@ -25,7 +53,7 @@ public class Listener implements AdvancedMessageListener {
 
     @Override
     public void membershipMessageReceived(SpreadMessage spreadMessage) {
-        System.out.println(spreadMessage.getMembershipInfo().getMembers());
+        System.out.println(Arrays.toString(spreadMessage.getMembershipInfo().getMembers()));
     }
 
 }

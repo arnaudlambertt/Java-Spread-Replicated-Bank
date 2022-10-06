@@ -127,6 +127,7 @@ public class AccountReplica {
     public static void main(String[] args) throws InterruptedException, NoSuchMethodException {
 
         id = UUID.randomUUID();
+        balance = 0.0;
         executedList = new ArrayList<>();
 
         connection = new SpreadConnection();
@@ -160,6 +161,18 @@ public class AccountReplica {
 
         System.out.println("Hello world!");
         Thread.sleep(100000000);
+    }
+
+    public static void deposit(double amount){
+        balance += amount;
+    }
+
+    public static void withdraw(double amount){
+        balance -= amount;
+    }
+
+    public static void addInterest(double amount){
+        balance += balance * amount * 0.01;
     }
 
 }
