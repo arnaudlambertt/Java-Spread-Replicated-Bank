@@ -25,6 +25,7 @@ public class AccountReplica {
     static File file;
     static Listener listener;
     static Session session;
+    static boolean isInitialized = false;
 
     public static void outstandingCollectionDaemon(){
 
