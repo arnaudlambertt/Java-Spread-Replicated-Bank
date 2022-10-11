@@ -61,5 +61,19 @@ public class Listener implements AdvancedMessageListener {
             if(AccountReplica.membersInfo.length == AccountReplica.numberOfReplicas)
                 AccountReplica.group.notify();
         }
+        if(AccountReplica.membersInfo.length > AccountReplica.numberOfReplicas){ //only executes when new client joins
+            SpreadMessage message = new SpreadMessage();
+            message.addGroup(AccountReplica.group);
+            message.setFifo();
+            try {
+                message.setObject("updateBalance " + AccountReplica.balance);
+                AccountReplica.connection.multicast(message);
+            } catch (SpreadException e) {
+                throw new RuntimeException(e);
+            }
+        }
+        if (AccountReplica.isInitialized){
+            AccountReplica.numberOfReplicas = AccountReplica.membersInfo.length;
+        }
     }
 }

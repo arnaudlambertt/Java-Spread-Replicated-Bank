@@ -25,6 +25,7 @@ public class AccountReplica {
     static File file;
     static Listener listener;
     static Session session;
+    static boolean isInitialized = false;
 
     public static void outstandingCollectionDaemon(){
 
@@ -303,6 +304,7 @@ public class AccountReplica {
                 if(membersInfo.length < numberOfReplicas) {
                     System.out.println("Waiting for replicas...");
                     group.wait();
+                    isInitialized = true;
                 }
             }
 
