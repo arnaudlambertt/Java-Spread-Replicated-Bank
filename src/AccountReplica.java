@@ -306,6 +306,12 @@ public class AccountReplica {
                     group.wait();
                     isInitialized = true;
                 }
+                if(!isInitialized) //new clients only
+                {
+                    synchronized (connection){
+                        connection.wait();
+                    }
+                }
             }
 
             CLI();
