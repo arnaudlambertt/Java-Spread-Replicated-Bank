@@ -11,16 +11,13 @@ public class Listener implements AdvancedMessageListener {
         try {
             msg = (String) message.getObject();
             if(msg.contains("updateBalance")){
-                if(!AccountReplica.isInitialized) {
+                if(msg.split(" ")[1].contains(AccountReplica.id.toString().substring(0,10)) && !AccountReplica.balanceUpdated) {
                     try{
-                        AccountReplica.balance = Double.parseDouble(msg.split(" ")[1]);
-                        AccountReplica.isInitialized = true;
-                        synchronized (AccountReplica.connection){
-                            AccountReplica.connection.notify();
-                        }
-                        System.out.println("Client successfully initialized. Balance = " + AccountReplica.balance);
+                        AccountReplica.balance += Double.parseDouble(msg.split(" ")[2]);
+                        AccountReplica.balanceUpdated = true;
+                        System.out.println("Balance successfully initialized. Balance = " + AccountReplica.balance);
                     }catch(NumberFormatException e){
-                        System.err.println("Failed initializing client");
+                        System.err.println("Failed initializing balance");
                     }
                 }
                 return;
@@ -73,8 +70,23 @@ public class Listener implements AdvancedMessageListener {
     public void membershipMessageReceived(SpreadMessage spreadMessage) {
         AccountReplica.membersInfo = spreadMessage.getMembershipInfo().getMembers();
         synchronized (AccountReplica.group){
-            if(AccountReplica.membersInfo.length == AccountReplica.numberOfReplicas)
+            if(AccountReplica.membersInfo.length == AccountReplica.numberOfReplicas) {
                 AccountReplica.group.notify();
+            }
+        }
+        if(AccountReplica.membersInfo.length > AccountReplica.numberOfReplicas){ //only executes when new client joins
+            SpreadMessage message = new SpreadMessage();
+            message.addGroup(AccountReplica.group);
+            message.setFifo();
+            try {
+                message.setObject("updateBalance " + spreadMessage.getMembershipInfo().getJoined() + " " + AccountReplica.balance);
+                AccountReplica.connection.multicast(message);
+            } catch (SpreadException e) {
+                throw new RuntimeException(e);
+            }
+        }
+        if (AccountReplica.isInitialized){
+            AccountReplica.numberOfReplicas = AccountReplica.membersInfo.length;
         }
     }
 }

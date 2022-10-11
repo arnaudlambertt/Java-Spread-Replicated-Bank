@@ -26,6 +26,7 @@ public class AccountReplica {
     static Listener listener;
     static Session session;
     static boolean isInitialized = false;
+    static boolean balanceUpdated = false;
 
     public static void outstandingCollectionDaemon(){
 
@@ -292,25 +293,16 @@ public class AccountReplica {
                 setupTunnel(serverAddress);
 
             connection.add(listener);
-            connection.connect(InetAddress.getByName(serverAddress.equals("129.240.65.61") ? "127.0.0.1" : serverAddress), 4803, String.valueOf(id), false, true);
+            connection.connect(InetAddress.getByName(serverAddress.equals("129.240.65.61") ? "127.0.0.1" : serverAddress), 4803, id.toString(), false, true);
 
             group = new SpreadGroup();
-            group.join(connection, accountName);
 
             daemonThread.start();
 
-            Thread.sleep(500);
             synchronized (group){
-                if(membersInfo.length < numberOfReplicas) {
-                    System.out.println("Waiting for replicas...");
-                    group.wait();
-                }
-                if(!isInitialized) //new clients only
-                {
-                    synchronized (connection){
-                        connection.wait();
-                    }
-                }
+                group.join(connection, accountName);
+                group.wait();
+                isInitialized = true;
             }
 
             CLI();
