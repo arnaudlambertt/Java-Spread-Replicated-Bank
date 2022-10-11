@@ -15,6 +15,9 @@ public class Listener implements AdvancedMessageListener {
                     try{
                         AccountReplica.balance = Double.parseDouble(msg.split(" ")[1]);
                         AccountReplica.isInitialized = true;
+                        synchronized (AccountReplica.connection){
+                            AccountReplica.connection.notify();
+                        }
                         System.out.println("Client successfully initialized. Balance = " + AccountReplica.balance);
                     }catch(NumberFormatException e){
                         System.err.println("Failed initializing client");

@@ -305,6 +305,12 @@ public class AccountReplica {
                     System.out.println("Waiting for replicas...");
                     group.wait();
                 }
+                if(!isInitialized) //new clients only
+                {
+                    synchronized (connection){
+                        connection.wait();
+                    }
+                }
             }
 
             CLI();
