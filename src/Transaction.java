@@ -5,6 +5,13 @@ public class Transaction{
     final String command;
     final String uniqueId;
 
+    /**
+     * Initialize transaction
+     * @param command Method + Arguments
+     * @param uniqueId UUID
+     * @throws NoSuchMethodException when the method does not exist
+     * @throws IllegalArgumentException when arguments are not doubles
+     */
     public Transaction(String command, String uniqueId) throws NoSuchMethodException, IllegalArgumentException {
         this.command = command;
         String method = command.split(" ")[0];
@@ -37,6 +44,11 @@ public class Transaction{
         return command + " " + uniqueId;
     }
 
+    /**
+     * Check if two transactions are identical
+     * @param o external object
+     * @return true if equal
+     */
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;

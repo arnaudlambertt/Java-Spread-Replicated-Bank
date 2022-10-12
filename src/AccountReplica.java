@@ -28,6 +28,9 @@ public class AccountReplica {
     static boolean isInitialized = false;
     static boolean balanceUpdated = false;
 
+    /**
+     * Daemon responsible for sending outstanding transactions to the spread server every 10 seconds.
+     */
     public static void outstandingCollectionDaemon(){
 
         while(!Thread.currentThread().isInterrupted()) {
@@ -45,7 +48,7 @@ public class AccountReplica {
                 messages.add(message);
             }
             try {
-                connection.multicast(messages.toArray(new SpreadMessage[messages.size()]));
+                connection.multicast(messages.toArray(new SpreadMessage[0]));
             } catch (SpreadException e) {
                 throw new RuntimeException(e);
             }
@@ -60,6 +63,12 @@ public class AccountReplica {
         }
     }
 
+    /**
+     * Setup SSH Tunnel
+     * @param host Host to connect to
+     * @throws IOException when ini methods fail
+     * @throws JSchException when tunnel fails
+     */
     public static void setupTunnel (String host) throws IOException, JSchException {
 
         String username, password;
@@ -105,10 +114,16 @@ public class AccountReplica {
         }
     }
 
+    /**
+     * Prints the balance instantaneously
+     */
     public static void getQuickBalance(){
         System.out.println(String.valueOf(balance));
     }
 
+    /**
+     * Waits for outstandingCollection to be empty before printing the balance
+     */
     public static void getSyncedBalance(){
         synchronized (outstandingCollection){
             try {
@@ -121,29 +136,47 @@ public class AccountReplica {
         System.out.println(String.valueOf(balance));
     }
 
+    /**
+     * Prints all transactions in the executedList
+     */
     public static void getHistory(){
         for(Transaction t : executedList){
             System.out.println(t);
         }
     }
 
+    /**
+     * Clears the executedList
+     */
     public static void cleanHistory(){
         executedList.clear();
         System.out.println("Cleaned history.");
     }
 
+    /**
+     * Prints info of group members
+     */
     public static void memberInfo(){
         System.out.println(Arrays.toString(membersInfo));
     }
 
+    /**
+     * Makes client thread sleep for duration
+     * @param duration Time to sleep for in seconds
+     */
     public static void sleep(int duration){
         try {
             System.out.println("Sleeping for " + duration);
-            Thread.sleep(duration * 1000);
+            Thread.sleep(duration * 1000L);
         } catch (InterruptedException e) {
             throw new RuntimeException(e);
         }
     }
+
+    /**
+     * Check transaction status (executed, outstanding, not found)
+     * @param uniqueId Transaction ID
+     */
     public static void checkTxStatus(String uniqueId){
         try{
             Transaction t = new Transaction("deposit 10", uniqueId);
@@ -157,6 +190,10 @@ public class AccountReplica {
             throw new RuntimeException(e);
         }
     }
+
+    /**
+     * Stops all running threads and disconnects
+     */
     public static void exit(){
         synchronized (daemonThread){
             daemonThread.notify();
@@ -171,6 +208,11 @@ public class AccountReplica {
             throw new RuntimeException(e);
         }
     }
+
+    /**
+     * Creates new transaction with uniqueID
+     * @param command Method + arguments
+     */
     private static void createTransaction(String command) {
         try {
             Transaction t = new Transaction(command,id + "_" + String.valueOf(outstandingCounter++));
@@ -180,6 +222,11 @@ public class AccountReplica {
             System.out.println(e.getMessage());
         }
     }
+
+    /**
+     * Command-line Interface
+     * Takes input from user or file
+     */
     public static void CLI(){
         String command;
         String method;
@@ -269,7 +316,12 @@ public class AccountReplica {
         }while(!method.equals("exit"));
     }
 
-    public static void main(String[] args) throws InterruptedException, NoSuchMethodException {
+    /**
+     * verify arguments, initialize attributes, setups the tunnel if needed,
+     * connects to spread, starts the multicasting daemon and waits for replicas to be available
+     * @param args java arguments
+     */
+    public static void main(String[] args) {
 
         if(args.length < 3)
             throw new IllegalArgumentException();
@@ -305,21 +357,35 @@ public class AccountReplica {
                 isInitialized = true;
             }
 
+            Thread.sleep(500);
+
             CLI();
 
-        } catch (SpreadException | IOException | JSchException e) {
+        } catch (SpreadException | IOException | JSchException | InterruptedException e) {
             throw new RuntimeException(e);
         }
     }
 
+    /**
+     * Adds amount to balance
+     * @param amount to deposit
+     */
     public static void deposit(double amount){
         balance += amount;
     }
 
+    /**
+     * Substracts amount from balance
+     * @param amount to withdraw
+     */
     public static void withdraw(double amount){
         balance -= amount;
     }
 
+    /**
+     * Adds interest to balance
+     * @param amount Interest to add in percentage
+     */
     public static void addInterest(double amount){
         balance += balance * amount * 0.01;
     }

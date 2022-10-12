@@ -2,12 +2,14 @@ import spread.AdvancedMessageListener;
 import spread.SpreadException;
 import spread.SpreadMessage;
 
-import java.util.Arrays;
-
 public class Listener implements AdvancedMessageListener {
+    /**
+     * On message received from spread server
+     * @param message Received regular message
+     */
     public void regularMessageReceived(SpreadMessage message) {
         Transaction transaction = null;
-        String msg = null;
+        String msg;
         try {
             msg = (String) message.getObject();
             if(msg.contains("updateBalance")){
@@ -28,6 +30,7 @@ public class Listener implements AdvancedMessageListener {
                 System.err.println(e.getMessage());
             }
 
+            assert transaction != null;
             String method = transaction.command.split(" ")[0];
             double argument = Double.parseDouble(transaction.command.split(" ")[1]);
 
@@ -49,7 +52,7 @@ public class Listener implements AdvancedMessageListener {
                         AccountReplica.withdraw(argument);
                         break;
                     }
-                    default:;
+                    default:
                 }
                 System.out.println("Executed transaction " + transaction);
 
@@ -66,6 +69,10 @@ public class Listener implements AdvancedMessageListener {
         }
     }
 
+    /**
+     * When a member joins/leaves the SpreadGroup
+     * @param spreadMessage Received membership message
+     */
     @Override
     public void membershipMessageReceived(SpreadMessage spreadMessage) {
         AccountReplica.membersInfo = spreadMessage.getMembershipInfo().getMembers();
