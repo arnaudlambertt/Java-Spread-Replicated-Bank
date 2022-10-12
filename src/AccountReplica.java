@@ -118,7 +118,7 @@ public class AccountReplica {
      * Prints the balance instantaneously
      */
     public static void getQuickBalance(){
-        System.out.println(String.valueOf(balance));
+        System.out.println(balance);
     }
 
     /**
@@ -133,7 +133,7 @@ public class AccountReplica {
                 throw new RuntimeException(e);
             }
         }
-        System.out.println(String.valueOf(balance));
+        System.out.println(balance);
     }
 
     /**
@@ -215,7 +215,7 @@ public class AccountReplica {
      */
     private static void createTransaction(String command) {
         try {
-            Transaction t = new Transaction(command,id + "_" + String.valueOf(outstandingCounter++));
+            Transaction t = new Transaction(command,id + "_" + (outstandingCounter++));
             outstandingCollection.add(t);
             System.out.println("Created transaction: " + t);
         } catch (NoSuchMethodException | IllegalArgumentException e) {
