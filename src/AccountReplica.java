@@ -118,31 +118,63 @@ public class AccountReplica {
      * Prints the balance instantaneously
      */
     public static void getQuickBalance(){
-        System.out.println(String.valueOf(balance));
+        System.out.println("Quick balance value: " + balance);
     }
 
     /**
      * Waits for outstandingCollection to be empty before printing the balance
      */
-    public static void getSyncedBalance(){
-        synchronized (outstandingCollection){
-            try {
-                if(!outstandingCollection.isEmpty())
-                    outstandingCollection.wait();
-            } catch (InterruptedException e) {
-                throw new RuntimeException(e);
+    public static void naiveGetSyncedBalance(){
+        new Thread(() -> {
+            synchronized (outstandingCollection){
+                try {
+                    if(!outstandingCollection.isEmpty())
+                        outstandingCollection.wait();
+                } catch (InterruptedException e) {
+                    throw new RuntimeException(e);
+                }
             }
-        }
-        System.out.println(String.valueOf(balance));
+            System.out.println("Naive synced Balance value: " + balance);
+        }).start();
+    }
+
+    /**
+     * Waits for the last outstandingTransaction to be executed before printing the balance
+     */
+    public static void getSyncedBalance(){
+        new Thread(() -> {
+
+            Transaction outstandingTransaction = null;
+
+            synchronized (outstandingCollection) {
+                if (!outstandingCollection.isEmpty()) {
+                    outstandingTransaction = outstandingCollection.get(outstandingCollection.size() - 1);
+                }
+            }
+
+            if(outstandingTransaction != null){
+                synchronized (outstandingTransaction) {
+                    try {
+                        outstandingTransaction.wait();
+                    } catch (InterruptedException e) {
+                        throw new RuntimeException(e);
+                    }
+                }
+            }
+
+            System.out.println("Synced Balance value: " + balance);
+        }).start();
     }
 
     /**
      * Prints all transactions in the executedList
      */
     public static void getHistory(){
+        System.out.println("Transaction history:");
         for(Transaction t : executedList){
-            System.out.println(t);
+            System.out.println("    " + t);
         }
+        System.out.println("----------------------------------------------------------------");
     }
 
     /**
@@ -195,6 +227,11 @@ public class AccountReplica {
      * Stops all running threads and disconnects
      */
     public static void exit(){
+
+        outstandingCollection.forEach(transaction -> { synchronized (transaction){
+            transaction.notifyAll();
+        }});
+
         synchronized (daemonThread){
             daemonThread.notify();
             daemonThread.interrupt();
@@ -215,7 +252,7 @@ public class AccountReplica {
      */
     private static void createTransaction(String command) {
         try {
-            Transaction t = new Transaction(command,id + "_" + String.valueOf(outstandingCounter++));
+            Transaction t = new Transaction(command,id + "_" + (outstandingCounter++));
             outstandingCollection.add(t);
             System.out.println("Created transaction: " + t);
         } catch (NoSuchMethodException | IllegalArgumentException e) {

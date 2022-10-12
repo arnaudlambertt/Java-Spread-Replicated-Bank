@@ -1,0 +1,35 @@
+memberInfo
+getSyncedBalance
+getQuickBalance
+deposit 100
+checkTxStatus <add transaction ID of the above deposit 100 command>
+getSyncedBalance
+getQuickBalance
+deposit 100
+getQuickBalance
+sleep 5
+getSyncedBalance
+addInterest 10
+getSyncedBalance
+deposit 100
+deposit 50
+deposit 40
+deposit 30
+deposit 20
+deposit 10
+addInterest 10
+getSyncedBalance
+getQuickBalance
+deposit 100
+deposit 100
+addInterest 20
+checkTxStatus <add transaction ID of the above addInterest 20 command>
+memberInfo
+getHistory
+cleanHistory
+deposit 100
+sleep 5
+getSyncedBalance
+getQuickBalance
+getHistory
+exit

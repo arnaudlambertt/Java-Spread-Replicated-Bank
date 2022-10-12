@@ -59,9 +59,13 @@ public class Listener implements AdvancedMessageListener {
             }else
                 System.out.println(transaction + " already executed");
 
-            synchronized (AccountReplica.outstandingCollection) {
-                if (AccountReplica.outstandingCollection.remove(transaction) && AccountReplica.outstandingCollection.isEmpty())
-                    AccountReplica.outstandingCollection.notify();
+            if(AccountReplica.outstandingCollection.contains(transaction)){
+                Transaction outstandingTransaction = AccountReplica.outstandingCollection.get(AccountReplica.outstandingCollection.indexOf(transaction));
+
+                synchronized (outstandingTransaction) {
+                    if (AccountReplica.outstandingCollection.remove(outstandingTransaction))
+                        outstandingTransaction.notifyAll();
+                }
             }
 
         } catch (SpreadException e) {
